@@ -1,0 +1,42 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: distributor
+  namespace: loki
+spec:
+  minReadySeconds: 10
+  replicas: 3
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      labels:
+        name: distributor
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                name: distributor
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - -config.file=/etc/loki/config.yaml
+        - -consul.prefix=
+        - -distributor.replication-factor=3
+        - -target=distributor
+        image: grafana/loki:master
+        imagePullPolicy: IfNotPresent
+        name: distributor
+        ports:
+        - containerPort: 80
+          name: http-metrics
+        - containerPort: 9095
+          name: grpc
+        volumeMounts:
+        - mountPath: /etc/loki
+          name: loki
+      volumes:
+      - configMap:
+          name: loki
+        name: loki

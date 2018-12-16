@@ -1,0 +1,49 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: table-manager
+  namespace: loki
+spec:
+  minReadySeconds: 10
+  replicas: 1
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      labels:
+        name: table-manager
+    spec:
+      containers:
+      - args:
+        - -bigtable.instance=bigtable
+        - -bigtable.project=bigtable
+        - -chunk.storage-client=aws
+        - -dynamodb.chunk-table.from=2018-12-11
+        - -dynamodb.chunk-table.inactive-read-throughput=0
+        - -dynamodb.chunk-table.inactive-write-throughput=0
+        - -dynamodb.chunk-table.prefix=loki_chunks_
+        - -dynamodb.chunk-table.read-throughput=0
+        - -dynamodb.chunk-table.write-throughput=0
+        - -dynamodb.original-table-name=loki_index
+        - -dynamodb.periodic-table.from=2018-12-11
+        - -dynamodb.periodic-table.inactive-read-throughput=0
+        - -dynamodb.periodic-table.inactive-write-throughput=0
+        - -dynamodb.periodic-table.prefix=loki_index_
+        - -dynamodb.periodic-table.read-throughput=0
+        - -dynamodb.periodic-table.write-throughput=0
+        - -dynamodb.use-periodic-tables=true
+        - -dynamodb.v9-schema-from=2018-12-11
+        image: grafana/cortex-table-manager:r47-06f3294e
+        imagePullPolicy: IfNotPresent
+        name: table-manager
+        ports:
+        - containerPort: 80
+          name: http-metrics
+        - containerPort: 9095
+          name: grpc
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi

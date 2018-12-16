@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: querier
+  namespace: loki
+spec:
+  ports:
+  - name: querier-http-metrics
+    port: 80
+    targetPort: 80
+  - name: querier-grpc
+    port: 9095
+    targetPort: 9095
+  selector:
+    name: querier

@@ -1,0 +1,34 @@
+{
+    "dependencies": [
+        {
+            "name": "promtail",
+            "source": {
+                "git": {
+                    "remote": "https://github.com/grafana/loki",
+                    "subdir": "ksonnet/promtail"
+                }
+            },
+            "version": "master"
+        },
+        {
+            "name": "loki",
+            "source": {
+                "git": {
+                    "remote": "https://github.com/grafana/loki",
+                    "subdir": "ksonnet/loki"
+                }
+            },
+            "version": "master"
+        },
+        {
+            "name": "ksonnet",
+            "source": {
+                "git": {
+                    "remote": "https://github.com/ksonnet/ksonnet-lib",
+                    "subdir": ""
+                }
+            },
+            "version": "master"
+        }
+    ]
+}

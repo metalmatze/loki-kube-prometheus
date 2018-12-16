@@ -1,0 +1,55 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: ingester
+  namespace: loki
+spec:
+  minReadySeconds: 60
+  replicas: 3
+  revisionHistoryLimit: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        name: ingester
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                name: ingester
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - -config.file=/etc/loki/config.yaml
+        - -consul.prefix=
+        - -ingester.claim-on-rollout=true
+        - -ingester.join-after=30s
+        - -ingester.num-tokens=512
+        - -target=ingester
+        image: grafana/loki:master
+        imagePullPolicy: IfNotPresent
+        name: ingester
+        ports:
+        - containerPort: 80
+          name: http-metrics
+        - containerPort: 9095
+          name: grpc
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 80
+          initialDelaySeconds: 15
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/loki
+          name: loki
+      terminationGracePeriodSeconds: 4800
+      volumes:
+      - configMap:
+          name: loki
+        name: loki
