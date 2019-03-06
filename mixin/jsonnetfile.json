@@ -5,7 +5,7 @@
             "source": {
                 "git": {
                     "remote": "https://github.com/grafana/loki",
-                    "subdir": "ksonnet/promtail"
+                    "subdir": "production/ksonnet/promtail"
                 }
             },
             "version": "master"
@@ -15,7 +15,7 @@
             "source": {
                 "git": {
                     "remote": "https://github.com/grafana/loki",
-                    "subdir": "ksonnet/loki"
+                    "subdir": "production/ksonnet/loki"
                 }
             },
             "version": "master"
