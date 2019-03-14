@@ -226,30 +226,11 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
       local toleration = daemonset.mixin.spec.template.spec.tolerationsType;
       local containerEnv = container.envType;
 
-      // local masterToleration =
-      //   toleration.new() +
-      //   toleration.withEffect('NoSchedule') +
-      //   toleration.withKey('node-role.kubernetes.io/master');
-
-      // local procVolumeName = 'proc';
-      // local procVolume = volume.fromHostPath(procVolumeName, '/proc');
-      // local procVolumeMount = containerVolumeMount.new(procVolumeName, '/host/proc');
-
-      // local sysVolumeName = 'sys';
-      // local sysVolume = volume.fromHostPath(sysVolumeName, '/sys');
-      // local sysVolumeMount = containerVolumeMount.new(sysVolumeName, '/host/sys');
-
-      // local rootVolumeName = 'root';
-      // local rootVolume = volume.fromHostPath(rootVolumeName, '/');
-      // local rootVolumeMount = containerVolumeMount.new(rootVolumeName, '/host/root').
-      //   withMountPropagation('HostToContainer').
-      //   withReadOnly(true);
-
       local c =
         container.new($._config.promtail.name, $._config.promtail.image) +
         container.withArgs([
           '-config.file=/etc/promtail/promtail.yaml',
-          '-client.url=http://loki.loki.svc.cluster.local:3100/api/prom/push',
+          '-client.url=http://' + $._config.loki.name + '.' + $._config.namespace + '.svc.cluster.local:3100/api/prom/push',
         ]) +
         container.withEnv([
           container.envType.fromFieldPath('HOSTNAME', 'spec.nodeName'),

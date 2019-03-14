@@ -61,7 +61,7 @@ items:
         containers:
         - args:
           - -config.file=/etc/promtail/promtail.yaml
-          - -client.url=http://loki.loki.svc.cluster.local:3100/api/prom/push
+          - -client.url=http://loki.logging.svc.cluster.local:3100/api/prom/push
           env:
           - name: HOSTNAME
             valueFrom:
