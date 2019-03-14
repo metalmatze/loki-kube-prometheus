@@ -7,7 +7,5 @@ jb:
 
 list/loki.yaml: example.jsonnet mixin/mixin.libsonnet mixin/vendor/
 	jsonnet fmt -i mixin/mixin.libsonnet
-
-manifests:
-	jsonnet fmt -i mixin/loki.libsonnet
-	jsonnet -J mixin/vendor -J mixin/vendor/ksonnet/ksonnet.beta.3/ -m manifests mixin/loki.libsonnet | xargs -I{} sh -c 'cat {} | gojsontoyaml > {}.yaml; rm -f {}' -- {}
+	jsonnet fmt -i example.jsonnet
+	jsonnet -J mixin/vendor -J mixin/vendor/ksonnet/ksonnet.beta.3/ example.jsonnet | gojsontoyaml > list/loki.yaml
