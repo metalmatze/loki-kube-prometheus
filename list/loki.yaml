@@ -1,12 +1,13 @@
 apiVersion: v1
 items:
 - apiVersion: v1
-  kind: Namespace
+  kind: ServiceAccount
   metadata:
     name: loki
+    namespace: logging
 - apiVersion: v1
   data:
-    promtail.yml: "\"scrape_configs\": \n- \"job_name\": \"kubernetes-pods\"\n  \"kubernetes_sd_configs\":
+    promtail.yaml: "\"scrape_configs\": \n- \"job_name\": \"kubernetes-pods\"\n  \"kubernetes_sd_configs\":
       \n  - \"role\": \"pod\"\n  \"relabel_configs\": \n  - \"source_labels\": \n
       \   - \"__meta_kubernetes_pod_node_name\"\n    \"target_label\": \"__host__\"\n
       \ - \"action\": \"drop\"\n    \"regex\": \"^$\"\n    \"source_labels\": \n    -
@@ -16,288 +17,136 @@ items:
       \ - \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
       \   \"target_label\": \"namespace\"\n  - \"action\": \"replace\"\n    \"source_labels\":
       \n    - \"__meta_kubernetes_pod_name\"\n    \"target_label\": \"instance\"\n
-      \ - \"replacement\": \"/var/log/pods/$1\"\n    \"separator\": \"/\"\n    \"source_labels\":
-      \n    - \"__meta_kubernetes_pod_uid\"\n    - \"__meta_kubernetes_pod_container_name\"\n
-      \   \"target_label\": \"__path__\"\n- \"job_name\": \"kubernetes-pods-app\"\n
-      \ \"kubernetes_sd_configs\": \n  - \"role\": \"pod\"\n  \"relabel_configs\":
-      \n  - \"source_labels\": \n    - \"__meta_kubernetes_pod_node_name\"\n    \"target_label\":
-      \"__host__\"\n  - \"action\": \"drop\"\n    \"regex\": \"^$\"\n    \"source_labels\":
-      \n    - \"__meta_kubernetes_pod_label_app\"\n  - \"action\": \"replace\"\n    \"replacement\":
-      \"$1\"\n    \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
-      \   - \"__meta_kubernetes_pod_label_app\"\n    \"target_label\": \"job\"\n  -
-      \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
+      \ - \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_container_name\"\n
+      \   \"target_label\": \"container_name\"\n  - \"action\": \"labelmap\"\n    \"regex\":
+      \"__meta_kubernetes_pod_label_(.+)\"\n  - \"replacement\": \"/var/log/pods/$1/*.log\"\n
+      \   \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_uid\"\n
+      \   - \"__meta_kubernetes_pod_container_name\"\n    \"target_label\": \"__path__\"\n-
+      \"job_name\": \"kubernetes-pods-app\"\n  \"kubernetes_sd_configs\": \n  - \"role\":
+      \"pod\"\n  \"relabel_configs\": \n  - \"source_labels\": \n    - \"__meta_kubernetes_pod_node_name\"\n
+      \   \"target_label\": \"__host__\"\n  - \"action\": \"drop\"\n    \"regex\":
+      \"^$\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_label_app\"\n
+      \ - \"action\": \"replace\"\n    \"replacement\": \"$1\"\n    \"separator\":
+      \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n    -
+      \"__meta_kubernetes_pod_label_app\"\n    \"target_label\": \"job\"\n  - \"action\":
+      \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
       \   \"target_label\": \"namespace\"\n  - \"action\": \"replace\"\n    \"source_labels\":
       \n    - \"__meta_kubernetes_pod_name\"\n    \"target_label\": \"instance\"\n
-      \ - \"action\": \"labelmap\"\n    \"regex\": \"__meta_kubernetes_pod_label_(.+)\"\n
-      \ - \"replacement\": \"/var/log/pods/$1\"\n    \"separator\": \"/\"\n    \"source_labels\":
-      \n    - \"__meta_kubernetes_pod_uid\"\n    - \"__meta_kubernetes_pod_container_name\"\n
-      \   \"target_label\": \"__path__\""
+      \ - \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_container_name\"\n
+      \   \"target_label\": \"container_name\"\n  - \"action\": \"labelmap\"\n    \"regex\":
+      \"__meta_kubernetes_pod_label_(.+)\"\n  - \"replacement\": \"/var/log/pods/$1/*.log\"\n
+      \   \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_uid\"\n
+      \   - \"__meta_kubernetes_pod_container_name\"\n    \"target_label\": \"__path__\"\n\"server\":
+      \n  \"log_level\": \"debug\""
   kind: ConfigMap
   metadata:
     name: promtail
-    namespace: loki
-- apiVersion: extensions/v1beta1
+    namespace: logging
+- apiVersion: apps/v1beta2
   kind: DaemonSet
   metadata:
+    labels:
+      app: promtail
     name: promtail
-    namespace: loki
+    namespace: logging
   spec:
-    minReadySeconds: 10
+    selector:
+      matchLabels:
+        app: promtail
     template:
       metadata:
         labels:
-          name: promtail
+          app: promtail
       spec:
         containers:
         - args:
-          - -client.url=http://loki:password@gateway.loki.svc/api/prom/push
-          - -config.file=/etc/promtail/promtail.yml
+          - -config.file=/etc/promtail/promtail.yaml
+          - -client.url=http://loki.loki.svc.cluster.local:3100/api/prom/push
           env:
           - name: HOSTNAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
           image: grafana/promtail:master
-          imagePullPolicy: IfNotPresent
           name: promtail
-          ports:
-          - containerPort: 80
-            name: http-metrics
-          securityContext:
-            privileged: true
-            runAsUser: 0
           volumeMounts:
           - mountPath: /etc/promtail
-            name: promtail
+            name: config
+            readOnly: false
           - mountPath: /var/log
             name: varlog
+            readOnly: false
           - mountPath: /var/lib/docker/containers
             name: varlibdockercontainers
-            readOnly: true
-        serviceAccount: promtail
-        tolerations:
-        - effect: NoSchedule
-          operator: Exists
+            readOnly: false
+        hostPID: true
+        nodeSelector:
+          beta.kubernetes.io/os: linux
+        serviceAccountName: loki
         volumes:
         - configMap:
             name: promtail
-          name: promtail
+          name: config
         - hostPath:
             path: /var/log
           name: varlog
         - hostPath:
             path: /var/lib/docker/containers
           name: varlibdockercontainers
-    updateStrategy:
-      type: RollingUpdate
-- apiVersion: v1
-  data:
-    config.yaml: "\"auth_enabled\": true\n\"ingester\": \n  \"lifecycler\": \n    \"heartbeat_period\":
-      \"5s\"\n    \"interface_names\": \n    - \"eth0\"\n    \"join_after\": \"10s\"\n
-      \   \"num_tokens\": 512\n    \"ring\": \n      \"consul\": \n        \"consistentreads\":
-      true\n        \"host\": \"consul.loki.svc.cluster.local:8500\"\n        \"httpclienttimeout\":
-      \"20s\"\n        \"prefix\": \"\"\n      \"heartbeat_timeout\": \"1m\"\n      \"replication_factor\":
-      3\n      \"store\": \"consul\"\n\"schema_config\": \n  \"configs\": \n  - \"from\":
-      \"0\"\n    \"index\": \n      \"period\": \"168h\"\n      \"prefix\": \"loki_index_\"\n
-      \   \"object_store\": \"gcs\"\n    \"schema\": \"v9\"\n    \"store\": \"bigtable\"\n\"server\":
-      \n  \"graceful_shutdown_timeout\": \"5s\"\n  \"grpc_listen_port\": 9095\n  \"grpc_server_max_recv_msg_size\":
-      67108864\n  \"http_listen_port\": 80\n  \"http_server_idle_timeout\": \"120s\"\n
-      \ \"http_server_read_timeout\": \"30s\"\n  \"http_server_write_timeout\": \"30s\"\n
-      \ \"log_level\": \"info\"\n\"storage_config\": \n  \"aws\": {}\n  \"bigtable\":
-      {}\n  \"gcs\": {}"
-  kind: ConfigMap
+- apiVersion: extensions/v1beta1
+  kind: PodSecurityPolicy
   metadata:
+    name: promtail
+    namespace: logging
+  spec:
+    allowPrivilegeEscalation: true
+    fsGroup:
+      rule: RunAsAny
+    hostIPC: true
+    hostNetwork: true
+    hostPID: true
+    privileged: true
+    readOnlyRootFilesystem: false
+    runAsUser:
+      rule: RunAsAny
+    seLinux:
+      rule: RunAsAny
+    supplementalGroups:
+      rule: RunAsAny
+    volumes:
+    - secret
+    - configMap
+    - hostPath
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: promtail
+    namespace: logging
+  rules:
+  - apiGroups:
+    - extensions
+    resourceNames:
+    - promtail
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: promtail
+    namespace: logging
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: promtail
+  subjects:
+  - kind: ServiceAccount
     name: loki
-    namespace: loki
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: distributor
-    namespace: loki
-  spec:
-    ports:
-    - name: distributor-http-metrics
-      port: 80
-      targetPort: 80
-    - name: distributor-grpc
-      port: 9095
-      targetPort: 9095
-    selector:
-      name: distributor
-- apiVersion: apps/v1beta1
-  kind: Deployment
-  metadata:
-    name: distributor
-    namespace: loki
-  spec:
-    minReadySeconds: 10
-    replicas: 3
-    revisionHistoryLimit: 10
-    template:
-      metadata:
-        labels:
-          name: distributor
-      spec:
-        affinity:
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  name: distributor
-              topologyKey: kubernetes.io/hostname
-        containers:
-        - args:
-          - -config.file=/etc/loki/config.yaml
-          - -consul.prefix=
-          - -distributor.replication-factor=3
-          - -target=distributor
-          image: grafana/loki:master
-          imagePullPolicy: IfNotPresent
-          name: distributor
-          ports:
-          - containerPort: 80
-            name: http-metrics
-          - containerPort: 9095
-            name: grpc
-          volumeMounts:
-          - mountPath: /etc/loki
-            name: loki
-        volumes:
-        - configMap:
-            name: loki
-          name: loki
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: ingester
-    namespace: loki
-  spec:
-    ports:
-    - name: ingester-http-metrics
-      port: 80
-      targetPort: 80
-    - name: ingester-grpc
-      port: 9095
-      targetPort: 9095
-    selector:
-      name: ingester
-- apiVersion: apps/v1beta1
-  kind: Deployment
-  metadata:
-    name: ingester
-    namespace: loki
-  spec:
-    minReadySeconds: 60
-    replicas: 3
-    revisionHistoryLimit: 10
-    strategy:
-      rollingUpdate:
-        maxSurge: 0
-        maxUnavailable: 1
-    template:
-      metadata:
-        labels:
-          name: ingester
-      spec:
-        affinity:
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  name: ingester
-              topologyKey: kubernetes.io/hostname
-        containers:
-        - args:
-          - -config.file=/etc/loki/config.yaml
-          - -consul.prefix=
-          - -ingester.claim-on-rollout=true
-          - -ingester.join-after=30s
-          - -ingester.num-tokens=512
-          - -target=ingester
-          image: grafana/loki:master
-          imagePullPolicy: IfNotPresent
-          name: ingester
-          ports:
-          - containerPort: 80
-            name: http-metrics
-          - containerPort: 9095
-            name: grpc
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 80
-            initialDelaySeconds: 15
-            timeoutSeconds: 1
-          volumeMounts:
-          - mountPath: /etc/loki
-            name: loki
-        terminationGracePeriodSeconds: 4800
-        volumes:
-        - configMap:
-            name: loki
-          name: loki
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: querier
-    namespace: loki
-  spec:
-    ports:
-    - name: querier-http-metrics
-      port: 80
-      targetPort: 80
-    - name: querier-grpc
-      port: 9095
-      targetPort: 9095
-    selector:
-      name: querier
-- apiVersion: apps/v1beta1
-  kind: Deployment
-  metadata:
-    name: querier
-    namespace: loki
-  spec:
-    minReadySeconds: 10
-    replicas: 3
-    revisionHistoryLimit: 10
-    template:
-      metadata:
-        labels:
-          name: querier
-      spec:
-        affinity:
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  name: querier
-              topologyKey: kubernetes.io/hostname
-        containers:
-        - args:
-          - -config.file=/etc/loki/config.yaml
-          - -consul.prefix=
-          - -distributor.replication-factor=3
-          - -target=querier
-          image: grafana/loki:master
-          imagePullPolicy: IfNotPresent
-          name: querier
-          ports:
-          - containerPort: 80
-            name: http-metrics
-          - containerPort: 9095
-            name: grpc
-          volumeMounts:
-          - mountPath: /etc/loki
-            name: loki
-        volumes:
-        - configMap:
-            name: loki
-          name: loki
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
   metadata:
     name: promtail
-    namespace: loki
   rules:
   - apiGroups:
     - ""
@@ -308,25 +157,139 @@ items:
     - endpoints
     - pods
     verbs:
-    - get
     - list
+    - get
     - watch
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRoleBinding
   metadata:
     name: promtail
-    namespace: loki
   roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
     name: promtail
   subjects:
   - kind: ServiceAccount
-    name: promtail
-    namespace: loki
+    name: loki
+    namespace: logging
 - apiVersion: v1
-  kind: ServiceAccount
+  data:
+    loki.yaml: "\"auth_enabled\": false\n\"ingester\": \n  \"chunk_idle_period\":
+      \"15m\"\n  \"lifecycler\": \n    \"ring\": \n      \"replication_factor\": 1\n
+      \     \"store\": \"inmemory\"\n\"limits_config\": \n  \"enforce_metric_name\":
+      false\n\"schema_config\": \n  \"configs\": \n  - \"from\": 0\n    \"index\":
+      \n      \"period\": \"168h\"\n      \"prefix\": \"index_\"\n    \"object_store\":
+      \"filesystem\"\n    \"schema\": \"v9\"\n    \"store\": \"boltdb\"\n\"server\":
+      \n  \"http_listen_port\": 3100\n  \"log_level\": \"debug\"\n\"storage_config\":
+      \n  \"boltdb\": \n    \"directory\": \"/data/loki/index\"\n  \"filesystem\":
+      \n    \"directory\": \"/data/loki/chunks\""
+  kind: ConfigMap
   metadata:
-    name: promtail
-    namespace: loki
+    name: loki
+    namespace: logging
+- apiVersion: extensions/v1beta1
+  kind: PodSecurityPolicy
+  metadata:
+    name: loki
+    namespace: logging
+  spec:
+    allowPrivilegeEscalation: false
+    fsGroup:
+      rule: RunAsAny
+    hostIPC: false
+    hostNetwork: false
+    hostPID: false
+    privileged: false
+    readOnlyRootFilesystem: false
+    runAsUser:
+      rule: RunAsAny
+    seLinux:
+      rule: RunAsAny
+    supplementalGroups:
+      rule: RunAsAny
+    volumes:
+    - configMap
+    - emptyDir
+    - persistentVolumeClaim
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: loki
+    namespace: logging
+  rules:
+  - apiGroups:
+    - extensions
+    resourceNames:
+    - loki
+    resources:
+    - podsecuritypolicies
+    verbs:
+    - use
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: loki
+    namespace: logging
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: loki
+  subjects:
+  - kind: ServiceAccount
+    name: loki
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: loki
+    name: loki
+    namespace: logging
+  spec:
+    ports:
+    - name: loki
+      port: 3100
+      targetPort: loki
+    selector:
+      app: loki
+- apiVersion: apps/v1beta2
+  kind: Deployment
+  metadata:
+    labels:
+      app: loki
+    name: loki
+    namespace: logging
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: loki
+    strategy:
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+    template:
+      metadata:
+        labels:
+          app: loki
+      spec:
+        containers:
+        - args:
+          - -config.file=/etc/loki/loki.yaml
+          image: grafana/loki:master
+          imagePullPolicy: Always
+          name: loki
+          ports:
+          - containerPort: 3100
+            name: loki
+          volumeMounts:
+          - mountPath: /etc/loki
+            name: config
+            readOnly: false
+        nodeSelector:
+          beta.kubernetes.io/os: linux
+        serviceAccountName: loki
+        volumes:
+        - configMap:
+            name: loki
+          name: config
 kind: List
