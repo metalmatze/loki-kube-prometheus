@@ -1,6 +1,6 @@
 local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
 
-local mixin = (import 'mixin.libsonnet') + {
+local mixin = (import 'mixin/mixin.libsonnet') + {
   _config+:: {
     namespace: 'logging',
   },
