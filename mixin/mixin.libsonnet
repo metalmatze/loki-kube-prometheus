@@ -123,7 +123,6 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
                 separator: '/',
                 source_labels: [
                   '__meta_kubernetes_pod_uid',
-                  '__meta_kubernetes_pod_container_name',
                 ],
                 target_label: '__path__',
               },
@@ -190,7 +189,6 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
                 separator: '/',
                 source_labels: [
                   '__meta_kubernetes_pod_uid',
-                  '__meta_kubernetes_pod_container_name',
                 ],
                 target_label: '__path__',
               },
@@ -228,6 +226,7 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
 
       local c =
         container.new($._config.promtail.name, $._config.promtail.image) +
+        container.withImagePullPolicy('Always') +
         container.withArgs([
           '-config.file=/etc/promtail/promtail.yaml',
           '-client.url=http://' + $._config.loki.name + '.' + $._config.namespace + '.svc.cluster.local:3100/api/prom/push',
@@ -240,9 +239,9 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
           containerVolumeMount.new('config', '/etc/promtail'),
           containerVolumeMount.new('varlog', '/var/log'),
           containerVolumeMount.new('varlibdockercontainers', '/var/lib/docker/containers'),
-        ]);
-      // container.mixin.resources.withRequests({ cpu: '102m', memory: '180Mi' }) +
-      // container.mixin.resources.withLimits({ cpu: '250m', memory: '180Mi' });
+        ]) +
+        container.mixin.resources.withRequests({ cpu: '50m', memory: '60Mi' }) +
+        container.mixin.resources.withLimits({ cpu: '250m', memory: '180Mi' });
 
       local volumes = [
         { name: 'config', configMap: { name: $.promtail.configmap.metadata.name } },
@@ -415,7 +414,9 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
         container.withPorts([{ containerPort: 3100, name: 'loki' }]) +
         container.withVolumeMounts([
           containerVolumeMount.new('config', '/etc/loki'),
-        ],);
+        ],) +
+        container.mixin.resources.withRequests({ cpu: '50m', memory: '75Mi' }) +
+        container.mixin.resources.withLimits({ cpu: '500m', memory: '256Mi' });
 
       deployment.new($._config.loki.name, 1, c, $._config.loki.labels) +
       deployment.mixin.metadata.withNamespace($._config.namespace) +
