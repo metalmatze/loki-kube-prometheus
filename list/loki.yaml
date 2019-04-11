@@ -65,7 +65,7 @@ items:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
-          image: grafana/promtail:master
+          image: quay.io/metalmatze/promtail:20190411
           imagePullPolicy: Always
           name: promtail
           resources:
@@ -281,7 +281,7 @@ items:
         containers:
         - args:
           - -config.file=/etc/loki/loki.yaml
-          image: grafana/loki:master
+          image: quay.io/metalmatze/loki:20190411
           imagePullPolicy: Always
           name: loki
           ports:

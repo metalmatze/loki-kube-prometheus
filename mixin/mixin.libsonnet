@@ -6,7 +6,7 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
 
     loki+: {
       name: 'loki',
-      image: 'grafana/loki:master',
+      image: 'quay.io/metalmatze/loki:20190411',
       labels: { app: 'loki' },
 
       config+: {
@@ -54,7 +54,7 @@ local k = import 'ksonnet/ksonnet.beta.3/k.libsonnet';
 
     promtail+: {
       name: 'promtail',
-      image: 'grafana/promtail:master',
+      image: 'quay.io/metalmatze/promtail:20190411',
       labels: { app: 'promtail' },
 
       config+: {
