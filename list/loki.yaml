@@ -21,20 +21,6 @@ items:
       \   \"target_label\": \"container_name\"\n  - \"action\": \"labelmap\"\n    \"regex\":
       \"__meta_kubernetes_pod_label_(.+)\"\n  - \"replacement\": \"/var/log/pods/$1/*.log\"\n
       \   \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_uid\"\n
-      \   \"target_label\": \"__path__\"\n- \"job_name\": \"kubernetes-pods-app\"\n
-      \ \"kubernetes_sd_configs\": \n  - \"role\": \"pod\"\n  \"relabel_configs\":
-      \n  - \"source_labels\": \n    - \"__meta_kubernetes_pod_node_name\"\n    \"target_label\":
-      \"__host__\"\n  - \"action\": \"drop\"\n    \"regex\": \"^$\"\n    \"source_labels\":
-      \n    - \"__meta_kubernetes_pod_label_app\"\n  - \"action\": \"replace\"\n    \"replacement\":
-      \"$1\"\n    \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
-      \   - \"__meta_kubernetes_pod_label_app\"\n    \"target_label\": \"job\"\n  -
-      \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_namespace\"\n
-      \   \"target_label\": \"namespace\"\n  - \"action\": \"replace\"\n    \"source_labels\":
-      \n    - \"__meta_kubernetes_pod_name\"\n    \"target_label\": \"instance\"\n
-      \ - \"action\": \"replace\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_container_name\"\n
-      \   \"target_label\": \"container_name\"\n  - \"action\": \"labelmap\"\n    \"regex\":
-      \"__meta_kubernetes_pod_label_(.+)\"\n  - \"replacement\": \"/var/log/pods/$1/*.log\"\n
-      \   \"separator\": \"/\"\n    \"source_labels\": \n    - \"__meta_kubernetes_pod_uid\"\n
       \   \"target_label\": \"__path__\"\n\"server\": \n  \"log_level\": \"debug\""
   kind: ConfigMap
   metadata:
